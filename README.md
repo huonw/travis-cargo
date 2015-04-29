@@ -57,14 +57,14 @@ before_script:
 # the main build
 script:
   - |
-      tc cargo build &&
-      tc cargo test &&
-      tc cargo bench &&
-      tc --only beta cargo doc
+      ./tc cargo build &&
+      ./tc cargo test &&
+      ./tc cargo bench &&
+      ./tc --only beta cargo doc
 after_success:
   # upload the documentation from the build with beta (automatically only actually
   # runs on the master branch)
-  - tc --only beta doc-upload
+  - ./tc --only beta doc-upload
 
 env:
   global:

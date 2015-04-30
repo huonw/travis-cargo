@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import argparse
 import os, sys, subprocess, json
 
@@ -91,6 +90,3 @@ def main():
         return
 
     args.func(version, args)
-
-if __name__ == '__main__':
-    main()

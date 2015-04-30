@@ -39,20 +39,20 @@ def add_features(cargo_args, version):
             cargo_args += ['--features', nightly_feature]
 
 
-def cargo(version, manifest, args):
+def cargo(version, manifest, global_args, subcommand, args):
     cargo_args = args.cargo_args
-    if cargo_args[0] == 'bench' and not is_nightly:
+    if subcommand == 'bench' and version != 'nightly':
         print('skipping `cargo bench` on non-nightly version')
         return
 
     add_features(cargo_args, version)
 
-    if not args.quiet and '--verbose' not in cargo_args and '-v' not in cargo_args:
+    if not global_args.quiet and '--verbose' not in cargo_args and '-v' not in cargo_args:
         cargo_args.append('--verbose')
 
-    run('cargo', *cargo_args)
+    run('cargo', subcommand, *cargo_args)
 
-def doc_upload(version, manifest, args):
+def doc_upload(version, manifest, global_args, subcommand, args):
     branch = os.environ['TRAVIS_BRANCH']
     pr = os.environ['TRAVIS_PULL_REQUEST']
     token = os.environ['GH_TOKEN']
@@ -73,7 +73,7 @@ def doc_upload(version, manifest, args):
         run('./ghp-import/ghp-import', '-n', 'target/doc')
         run('git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
 
-def coveralls(version, manifest, args):
+def coveralls(version, manifest, global_args, subcommand, args):
     job_id = os.environ['TRAVIS_JOB_ID']
 
     cargo_args = args.cargo_args
@@ -132,7 +132,43 @@ def coveralls(version, manifest, args):
     run('kcov', '--merge', '--coveralls-id=' + job_id, 'target/kcov',
         *('target/kcov-' + b for b in test_binaries))
 
+
+# user interface
+
+class ScInfo(object):
+    def __init__(self, func, description, arguments):
+        self.func = func
+        self.description = description
+        self.arguments = arguments
+        for _name, options in arguments:
+            assert isinstance(options, dict)
+
+SC_INFO = {
+    'doc-upload': ScInfo(func = doc_upload,
+                         description = 'use ghp-import to upload cargo-rendered '
+                         'docs from the master branch',
+                         arguments = []),
+    'coveralls': ScInfo(func = coveralls,
+                        description = 'record coverage of `cargo test` and upload to '
+                        'coveralls.io with kcov, this runs all binaries that `cargo test` runs '
+                        'but not doc tests',
+                    arguments = [(['cargo_args'], {
+                        'metavar': 'ARGS',
+                        'nargs': '*',
+                        'help': 'arguments to pass to `cargo test`'
+                    })]),
+}
+DEFAULT_SC_INFO = ScInfo(
+    func = cargo,
+    description = 'runs `cargo {name}`',
+    arguments = [(['cargo_args'], {
+        'metavar': 'ARGS',
+        'nargs': '*',
+        'help': 'arguments to pass to `cargo test`'
+    })])
+
 def main():
+    # main parser
     parser = argparse.ArgumentParser(description = 'manages interactions between travis '
                                      'and cargo/rust compilers')
 
@@ -141,38 +177,29 @@ def main():
     parser.add_argument('--only', metavar='VERSION',
                         help='only run the given command if the specified version matches '
                         '`TRAVIS_RUST_VERSION`')
-    subparsers = parser.add_subparsers(title = 'subcommands')
+    parser.add_argument('command', metavar='{coveralls,doc-upload,COMMAND}',
+                        help='the command to run, unrecognised COMMANDs are passed to cargo')
+    parser.add_argument('args', metavar='ARGS', nargs='*',
+                        help='additional arguments')
 
-    p_cargo = subparsers.add_parser('cargo',
-                                    help = 'run cargo, passing '
-                                    '`--features $TRAVIS_CARGO_NIGHTLY_FEATURE` (default '
-                                    '\'unstable\') if the nightly branch is detected, and '
-                                    'skipping `cargo bench` if it is not')
-    p_cargo.add_argument('cargo_args', metavar='ARGS', nargs='+',
-                         help = 'arguments to pass to `cargo`, including the subcommand')
-    p_cargo.set_defaults(func = cargo)
+    global_args = parser.parse_args()
 
-    p_doc_upload = subparsers.add_parser('doc-upload',
-                                         help = 'uses ghp-import to upload cargo-rendered docs '
-                                         'from the master branch')
-    p_doc_upload.set_defaults(func = doc_upload)
+    # parser for the individual subcommand
+    info = SC_INFO.get(global_args.command, DEFAULT_SC_INFO)
+    descr = info.description.format(name = global_args.command)
+    subcommand_parser = argparse.ArgumentParser(prog=sys.argv[0] + ' ' + global_args.command,
+                                                description = descr)
+    for name, options in info.arguments:
+        subcommand_parser.add_argument(*name, **options)
+    args = subcommand_parser.parse_args(global_args.args)
 
-    p_coveralls = subparsers.add_parser('coveralls',
-                                        help = 'runs all targets that are have `test = true` \
-                                        and `debug = true`')
-    p_coveralls.add_argument('cargo_args', metavar='ARGS', nargs='*',
-                             help = 'arguments to pass to `cargo test`, '
-                             'not including the subcommand')
-    p_coveralls.set_defaults(func = coveralls)
-
-    args = parser.parse_args()
 
     version = os.environ['TRAVIS_RUST_VERSION']
-    if args.only and args.only != version:
+    if global_args.only and global_args.only != version:
         return
 
     manifest = Manifest(os.getcwd())
-    args.func(version, manifest, args)
+    info.func(version, manifest, global_args, global_args.command, args)
 
 if __name__ == '__main__':
     main()

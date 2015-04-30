@@ -27,21 +27,26 @@ class Manifest(object):
                 return target['name'].replace('-', '_')
         return None
 
-def cargo(version, manifest, args):
-    is_nightly = version == 'nightly'
-    cargo_args = args.cargo_args
-    nightly_feature = os.environ.get('TRAVIS_CARGO_NIGHTLY_FEATURE', 'unstable')
-    if cargo_args[0] == 'bench' and not is_nightly:
-        print('skipping `cargo bench` on non-nightly version')
-        return
 
-    if is_nightly:
+def add_features(cargo_args, version):
+    nightly_feature = os.environ.get('TRAVIS_CARGO_NIGHTLY_FEATURE', 'unstable')
+    if version == 'nightly':
         for i in range(0, len(cargo_args)):
             if cargo_args[i] == '--features':
                 cargo_args[i + 1] += ' ' + nightly_feature
                 break
         else:
             cargo_args += ['--features', nightly_feature]
+
+
+def cargo(version, manifest, args):
+    cargo_args = args.cargo_args
+    if cargo_args[0] == 'bench' and not is_nightly:
+        print('skipping `cargo bench` on non-nightly version')
+        return
+
+    add_features(cargo_args, version)
+
     if not args.quiet and '--verbose' not in cargo_args and '-v' not in cargo_args:
         cargo_args.append('--verbose')
 
@@ -71,6 +76,9 @@ def doc_upload(version, manifest, args):
 def coveralls(version, manifest, args):
     job_id = os.environ['TRAVIS_JOB_ID']
 
+    cargo_args = args.cargo_args
+    add_features(cargo_args, version)
+
     test_binaries = []
 
     # look through the output of `cargo test` to find the test
@@ -79,7 +87,7 @@ def coveralls(version, manifest, args):
     # inconsistent/inaccurate, so using the output of read-manifest is
     # far too much trouble.
     try:
-        output = subprocess.check_output(['cargo', 'test'],
+        output = subprocess.check_output(['cargo', 'test'] + list(cargo_args),
                                          stderr=sys.stderr)
     except subprocess.CalledProcessError as e:
         print(e.output.decode())
@@ -140,7 +148,8 @@ def main():
                                     '`--features $TRAVIS_CARGO_NIGHTLY_FEATURE` (default '
                                     '\'unstable\') if the nightly branch is detected, and '
                                     'skipping `cargo bench` if it is not')
-    p_cargo.add_argument('cargo_args', metavar='ARGS', nargs='+')
+    p_cargo.add_argument('cargo_args', metavar='ARGS', nargs='+',
+                         help = 'arguments to pass to `cargo`, including the subcommand')
     p_cargo.set_defaults(func = cargo)
 
     p_doc_upload = subparsers.add_parser('doc-upload',
@@ -151,6 +160,9 @@ def main():
     p_coveralls = subparsers.add_parser('coveralls',
                                         help = 'runs all targets that are have `test = true` \
                                         and `debug = true`')
+    p_coveralls.add_argument('cargo_args', metavar='ARGS', nargs='*',
+                             help = 'arguments to pass to `cargo test`, '
+                             'not including the subcommand')
     p_coveralls.set_defaults(func = coveralls)
 
     args = parser.parse_args()

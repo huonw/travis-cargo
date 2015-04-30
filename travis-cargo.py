@@ -1,26 +1,33 @@
 #!/usr/bin/env python
 import argparse
-import os, sys, subprocess, json
+import os, sys, subprocess, json, re
 
 def run(*args):
     ret = subprocess.call(args,  stdout=sys.stdout, stderr=sys.stderr)
     if ret != 0:
         exit(ret)
-def find_lib_name():
-    try:
-        output = subprocess.check_output(['cargo', 'read-manifest', '--manifest-path', os.getcwd()],
-                                         stderr=sys.stderr)
-    except subprocess.CalledProcessError as e:
-        exit(e.returncode)
-    manifest = json.loads(output.decode())
 
-    for target in manifest['targets']:
-        if 'lib' in target['kind']:
-            return target['name'].replace('-', '_')
+def target_binary_name(target):
+    return target['name'].replace('-', '_') + target['metadata']['extra_filename']
 
-    return None
+class Manifest(object):
+    def __init__(self, dir):
+        try:
+            output = subprocess.check_output(['cargo', 'read-manifest', '--manifest-path', dir],
+                                             stderr=sys.stderr)
+        except subprocess.CalledProcessError as e:
+            print(e.output.decode())
+            exit(e.returncode)
+        self.manifest = json.loads(output.decode())
+    def targets(self):
+        return self.manifest['targets']
+    def lib_name(self):
+        for target in self.targets():
+            if 'lib' in target['kind']:
+                return target['name'].replace('-', '_')
+        return None
 
-def cargo(version, args):
+def cargo(version, manifest, args):
     is_nightly = version == 'nightly'
     cargo_args = args.cargo_args
     nightly_feature = os.environ.get('TRAVIS_CARGO_NIGHTLY_FEATURE', 'unstable')
@@ -40,13 +47,13 @@ def cargo(version, args):
 
     run('cargo', *cargo_args)
 
-def doc_upload(version, args):
+def doc_upload(version, manifest, args):
     branch = os.environ['TRAVIS_BRANCH']
     pr = os.environ['TRAVIS_PULL_REQUEST']
     token = os.environ['GH_TOKEN']
     repo = os.environ['TRAVIS_REPO_SLUG']
 
-    lib_name = find_lib_name()
+    lib_name = manifest.lib_name()
     if lib_name is None:
         sys.stderr.write('error: uploading docs for package with no library')
         exit(1)
@@ -60,6 +67,62 @@ def doc_upload(version, args):
         run('git', 'clone', 'https://github.com/davisp/ghp-import')
         run('./ghp-import/ghp-import', '-n', 'target/doc')
         run('git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
+
+def coveralls(version, manifest, args):
+    job_id = os.environ['TRAVIS_JOB_ID']
+
+    test_binaries = []
+
+    # look through the output of `cargo test` to find the test
+    # binaries.
+    # FIXME: the information cargo feeds us is
+    # inconsistent/inaccurate, so using the output of read-manifest is
+    # far too much trouble.
+    try:
+        output = subprocess.check_output(['cargo', 'test'],
+                                         stderr=sys.stderr)
+    except subprocess.CalledProcessError as e:
+        print(e.output.decode())
+        exit(e.returncode)
+    output = output.decode()
+    running = re.compile('^     Running target/debug/(.*)$', re.M)
+    for line in running.finditer(output):
+        test_binaries.append(line.group(1))
+
+    # build kcov:
+    init = '''
+    sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev cmake
+    git clone --depth 1 https://github.com/SimonKagstrom/kcov
+    mkdir kcov/build
+    '''
+    for line in init.split('\n'):
+        line = line.strip()
+        if line:
+            print('Running: %s' % line)
+            run(*line.split())
+    current = os.getcwd()
+    os.chdir('kcov/build')
+    build = '''
+    cmake ..
+    make
+    sudo make install
+    '''
+    for line in build.split('\n'):
+        line = line.strip()
+        if line:
+            print('Running: %s' % line)
+            run(*line.split())
+    os.chdir(current)
+
+    # record coverage for each binary
+    for binary in test_binaries:
+        print('Recording %s' % binary)
+        run('kcov', '--exclude-pattern=/.cargo', 'target/kcov-' + binary,
+            'target/debug/' + binary)
+    # merge all the coverages and upload in one go
+    print('Uploading coverage')
+    run('kcov', '--merge', '--coveralls-id=' + job_id, 'target/kcov',
+        *('target/kcov-' + b for b in test_binaries))
 
 def main():
     parser = argparse.ArgumentParser(description = 'manages interactions between travis '
@@ -84,13 +147,20 @@ def main():
                                          help = 'uses ghp-import to upload cargo-rendered docs '
                                          'from the master branch')
     p_doc_upload.set_defaults(func = doc_upload)
+
+    p_coveralls = subparsers.add_parser('coveralls',
+                                        help = 'runs all targets that are have `test = true` \
+                                        and `debug = true`')
+    p_coveralls.set_defaults(func = coveralls)
+
     args = parser.parse_args()
 
     version = os.environ['TRAVIS_RUST_VERSION']
     if args.only and args.only != version:
         return
 
-    args.func(version, args)
+    manifest = Manifest(os.getcwd())
+    args.func(version, manifest, args)
 
 if __name__ == '__main__':
     main()

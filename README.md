@@ -30,6 +30,14 @@ Features:
 The script is designed to automatically work with both Python 2 and
 Python 3.
 
+I've written some things about this:
+
+- [Helping Travis catch the rustc train][train]
+- [Travis on the train, part 2][part2]
+
+[train]: http://huonw.github.io/blog/2015/04/helping-travis-catch-the-rustc-train/
+[part2]: http://huonw.github.io/blog/2015/05/travis-on-the-train-part-2/
+
 ## Installation
 
 ```

@@ -1,7 +1,7 @@
 # travis-cargo
 
 This provides a standalone script `travis-cargo` that manages
-running cargo and several other related features on [Travis CI].
+running cargo and several other related features on [Travis CI][travis].
 
 [travis]: http://travis-ci.org
 
@@ -91,7 +91,7 @@ optional arguments:
 
 ## Example
 
-A possible configuration is:
+A possible `.travis.yml` configuration is:
 
 ```yaml
 language: rust
@@ -105,7 +105,7 @@ rust:
 # load travis-cargo
 before_script:
   - |
-      pip install 'travis-cargo<0.2' --user
+      pip install 'travis-cargo<0.2' --user &&
       export PATH=$HOME/.local/bin:$PATH
 
 # the main build

@@ -1,4 +1,5 @@
 /dist
+/build
 *.egg-info
 /test/target
 /test/Cargo.lock

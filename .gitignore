@@ -1,2 +1,5 @@
 /dist
 *.egg-info
+/test/target
+/test/Cargo.lock
+/travis_cargo.pyc

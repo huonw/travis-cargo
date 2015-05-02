@@ -1,0 +1,25 @@
+sudo: required
+
+language: rust
+rust:
+  - nightly
+  - beta
+addons:
+  apt:
+    packages:
+      - python3
+env:
+  matrix:
+    - PIP=pip2
+    - PIP=pip3
+  global:
+    secure: "JBbvav6WVyWekbpmfhct+/ZnGXbHlk47iev/dQOtjVjcwA+NModsNgaNk2TIyPAKe/jNCXAok+i7Fw0FMQKi3kLthixl9sz2wa4Dv2DkzocHtIxKuwySvxeQsfuOpFzc2tlSI4NHCoACLLW4kyPGW5QOxlox472z8j5F7mvqeQY="
+before_script:
+  - |
+      if [ "$PIP" = pip3 ]; then
+        sudo apt-get update
+        sudo apt-get install python3-setuptools
+        sudo easy_install3 pip
+      fi
+script:
+  - bash ./run-tests.sh

@@ -72,31 +72,7 @@ def doc_upload(version, manifest, global_args, subcommand, args):
         run('./ghp-import/ghp-import', '-n', 'target/doc')
         run('git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
 
-def coveralls(version, manifest, global_args, subcommand, args):
-    job_id = os.environ['TRAVIS_JOB_ID']
-
-    cargo_args = args.cargo_args
-    add_features(cargo_args, version)
-
-    test_binaries = []
-
-    # look through the output of `cargo test` to find the test
-    # binaries.
-    # FIXME: the information cargo feeds us is
-    # inconsistent/inaccurate, so using the output of read-manifest is
-    # far too much trouble.
-    try:
-        output = subprocess.check_output(['cargo', 'test'] + list(cargo_args),
-                                         stderr=sys.stderr)
-    except subprocess.CalledProcessError as e:
-        print(e.output.decode())
-        exit(e.returncode)
-    output = output.decode()
-    running = re.compile('^     Running target/debug/(.*)$', re.M)
-    for line in running.finditer(output):
-        test_binaries.append(line.group(1))
-
-    # build kcov:
+def build_kcov():
     init = '''
     sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev cmake
     git clone --depth 1 https://github.com/SimonKagstrom/kcov
@@ -121,15 +97,53 @@ def coveralls(version, manifest, global_args, subcommand, args):
             run(*line.split())
     os.chdir(current)
 
+def raw_coverage(test_args, merge_msg, kcov_merge_args, kcov_merge_dir):
+    build_kcov()
+
+    test_binaries = []
+    # look through the output of `cargo test` to find the test
+    # binaries.
+    # FIXME: the information cargo feeds us is
+    # inconsistent/inaccurate, so using the output of read-manifest is
+    # far too much trouble.
+    try:
+        output = subprocess.check_output(['cargo', 'test'] + list(cargo_args),
+                                         stderr=sys.stderr)
+    except subprocess.CalledProcessError as e:
+        print(e.output.decode())
+        exit(e.returncode)
+    output = output.decode()
+    running = re.compile('^     Running target/debug/(.*)$', re.M)
+    for line in running.finditer(output):
+        test_binaries.append(line.group(1))
+
+
     # record coverage for each binary
     for binary in test_binaries:
         print('Recording %s' % binary)
         run('kcov', '--exclude-pattern=/.cargo', 'target/kcov-' + binary,
             'target/debug/' + binary)
     # merge all the coverages and upload in one go
-    print('Uploading coverage')
-    run('kcov', '--merge', '--coveralls-id=' + job_id, 'target/kcov',
-        *('target/kcov-' + b for b in test_binaries))
+    print(merge_msg)
+    kcov_args = ['kcov', '--merge'] + kcov_merge_args + [kcov_merge_dir]
+    kcov_args += ('target/kcov-' + b for b in test_binaries)
+    run(*kcov_args)
+
+def coverage(version, manifest, global_args, subcommand, args):
+    cargo_args = args.cargo_args
+    add_features(cargo_args, version)
+
+    kcov_merge_dir = args.merge_into
+    raw_coverage(cargo_args, 'Merging coverage', [], kcov_merge_dir)
+
+def coveralls(version, manifest, global_args, subcommand, args):
+    job_id = os.environ['TRAVIS_JOB_ID']
+
+    cargo_args = args.cargo_args
+    add_features(cargo_args, version)
+
+    raw_coverage(cargo_args, 'Uploading coverage',
+                 ['--coveralls-id=' + job_id], 'target/kcov')
 
 
 # user interface
@@ -150,12 +164,27 @@ SC_INFO = {
     'coveralls': ScInfo(func = coveralls,
                         description = 'Record coverage of `cargo test` and upload to '
                         'coveralls.io with kcov, this runs all binaries that `cargo test` runs '
-                        'but not doc tests',
+                        'but not doc tests. Merged kcov results can be accessed in `target/kcov`.',
                     arguments = [(['cargo_args'], {
                         'metavar': 'ARGS',
                         'nargs': '*',
                         'help': 'arguments to pass to `cargo test`'
                     })]),
+    'coverage': ScInfo(func = coverage,
+                       description = 'Record coverage of `cargo test`, this runs all '
+                       'binaries that `cargo test` runs but not doc tests. The results '
+                       'of all tests are merged into a single directory.',
+                   arguments = [(['cargo_args'], {
+                        'metavar': 'ARGS',
+                        'nargs': '*',
+                        'help': 'arguments to pass to `cargo test`'
+                    }),
+                            (['-m', '--merge-into'], {
+                                'metavar': 'DIR',
+                                'default': 'target/kcov',
+                                'help': 'the directory to put the final merged kcov '
+                                'result into (default `target/kcov`)'
+                            })])
 }
 DEFAULT_SC_INFO = ScInfo(
     func = cargo,

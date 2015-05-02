@@ -50,53 +50,6 @@ changes may occur between `0.x` and `0.(x+1)`, and between major
 versions. One should use the version-restriction syntax demonstrated
 above to protect against this.
 
-## Help
-
-```
-usage: travis-cargo [-h] [-q] [--only VERSION]
-                    {coveralls,doc-upload,COMMAND} [ARGS [ARGS ...]]
-
-manages interactions between travis and cargo/rust compilers
-
-positional arguments:
-  {coveralls,doc-upload,COMMAND}
-                        the command to run, unrecognised COMMANDs are passed
-                        to cargo
-  ARGS                  additional arguments
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -q, --quiet           don't pass --verbose to cargo
-  --only VERSION        only run the given command if the specified version
-                        matches `TRAVIS_RUST_VERSION`
-```
-
-### `coveralls`
-
-```
-usage: travis-cargo coveralls [-h] [ARGS [ARGS ...]]
-
-record coverage of `cargo test` and upload to coveralls.io with kcov, this
-runs all binaries that `cargo test` runs but not doc tests
-
-positional arguments:
-  ARGS        arguments to pass to `cargo test`
-
-optional arguments:
-  -h, --help  show this help message and exit
-```
-
-### `doc-upload`
-
-```
-usage: travis-cargo doc-upload [-h]
-
-use ghp-import to upload cargo-rendered docs from the master branch
-
-optional arguments:
-  -h, --help  show this help message and exit
-```
-
 ## Example
 
 A possible `.travis.yml` configuration is:
@@ -141,3 +94,81 @@ env:
 Extra arguments can be passed to `cargo` invocations, although
 `-`-prefixed arguments will need to occur after a `--`, e.g. `travis-cargo
 build -- --features something`.
+
+If you do not wish to define an `unstable` or similar feature, setting
+`TRAVIS_CARGO_NIGHTLY_FEATURE=` should avoid errors caused by
+undefined features.
+
+## Help
+
+```
+usage: travis-cargo [-h] [-q] [--only VERSION]
+                    {coverage,coveralls,doc-upload,...} ...
+
+Manages interactions between Travis and Cargo and common tooling tasks.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -q, --quiet           don't pass --verbose to cargo subcommands
+  --only VERSION        only run the given command if the specified version
+                        matches `TRAVIS_RUST_VERSION`
+
+subcommands:
+  travis-cargo supports all cargo subcommands, and selected others (listed
+  below). Cargo subcommands have `--verbose` added to their invocation by
+  default, and, when running with a nightly compiler, `--features unstable`
+  (or `--features $TRAVIS_CARGO_NIGHTLY_FEATURE` if that environment
+  variable is defined) if `--features` is a valid argument.
+
+  {coverage,coveralls,doc-upload,...}
+    coverage            record code coverage
+    coveralls           record and upload code coverage to coveralls.io
+    doc-upload          upload documentation to Github pages.
+```
+
+### `coverage`
+
+```
+usage: travis-cargo coverage [-h] [-m DIR] [ARGS [ARGS ...]]
+
+Record coverage of `cargo test`, this runs all binaries that `cargo test` runs
+but not doc tests. The results of all tests are merged into a single
+directory.
+
+positional arguments:
+  ARGS                  arguments to pass to `cargo test`
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -m DIR, --merge-into DIR
+                        the directory to put the final merged kcov result into
+                        (default `target/kcov`)
+```
+
+### `coveralls`
+
+```
+usage: travis-cargo coveralls [-h] [ARGS [ARGS ...]]
+
+Record coverage of `cargo test` and upload to coveralls.io with kcov, this
+runs all binaries that `cargo test` runs but not doc tests. Merged kcov
+results can be accessed in `target/kcov`.
+
+positional arguments:
+  ARGS        arguments to pass to `cargo test`
+
+optional arguments:
+  -h, --help  show this help message and exit
+```
+
+### `doc-upload`
+
+```
+usage: travis-cargo doc-upload [-h]
+
+Use ghp-import to upload cargo-rendered docs to Github Pages, from the master
+branch.
+
+optional arguments:
+  -h, --help  show this help message and exit
+```

@@ -144,11 +144,11 @@ class ScInfo(object):
 
 SC_INFO = {
     'doc-upload': ScInfo(func = doc_upload,
-                         description = 'use ghp-import to upload cargo-rendered '
+                         description = 'Use ghp-import to upload cargo-rendered '
                          'docs from the master branch',
                          arguments = []),
     'coveralls': ScInfo(func = coveralls,
-                        description = 'record coverage of `cargo test` and upload to '
+                        description = 'Record coverage of `cargo test` and upload to '
                         'coveralls.io with kcov, this runs all binaries that `cargo test` runs '
                         'but not doc tests',
                     arguments = [(['cargo_args'], {
@@ -167,16 +167,17 @@ DEFAULT_SC_INFO = ScInfo(
     })])
 
 def main():
+    known_subcommands = [k for k in SC_INFO]
     # main parser
-    parser = argparse.ArgumentParser(description = 'manages interactions between travis '
-                                     'and cargo/rust compilers')
+    parser = argparse.ArgumentParser(description = 'Manages interactions between Travis '
+                                     'and Cargo and common tooling tasks')
 
     parser.add_argument('-q','--quiet', action='store_true', default=False,
                         help='don\'t pass --verbose to cargo')
     parser.add_argument('--only', metavar='VERSION',
                         help='only run the given command if the specified version matches '
                         '`TRAVIS_RUST_VERSION`')
-    parser.add_argument('command', metavar='{coveralls,doc-upload,COMMAND}',
+    parser.add_argument('command', metavar='{%s,COMMAND}' % ','.join(known_subcommands),
                         help='the command to run, unrecognised COMMANDs are passed to cargo')
     parser.add_argument('args', metavar='ARGS', nargs='*',
                         help='additional arguments')

@@ -5,19 +5,21 @@ def run(*args):
     ret = subprocess.call(args,  stdout=sys.stdout, stderr=sys.stderr)
     if ret != 0:
         exit(ret)
+def run_output(*args):
+    try:
+        output = subprocess.check_output(args,
+                                         stderr=sys.stderr)
+    except subprocess.CalledProcessError as e:
+        print(e.output.decode())
+        exit(e.returncode)
+    return output.decode()
 
 def target_binary_name(target):
     return target['name'].replace('-', '_') + target['metadata']['extra_filename']
 
 class Manifest(object):
     def __init__(self, dir):
-        try:
-            output = subprocess.check_output(['cargo', 'read-manifest', '--manifest-path', dir],
-                                             stderr=sys.stderr)
-        except subprocess.CalledProcessError as e:
-            print(e.output.decode())
-            exit(e.returncode)
-        self.manifest = json.loads(output.decode())
+        self.manifest = json.loads(run_output('cargo', 'read-manifest', '--manifest-path', dir))
     def targets(self):
         return self.manifest['targets']
     def lib_name(self):
@@ -38,20 +40,27 @@ def add_features(cargo_args, version):
             cargo_args += ['--features', nightly_feature]
 
 
-def cargo(version, manifest, global_args, subcommand, args):
+def cargo_raw(feature, version, manifest, args):
     cargo_args = args.cargo_args
+    subcommand = args.subcommand
     if subcommand == 'bench' and version != 'nightly':
         print('skipping `cargo bench` on non-nightly version')
         return
 
-    add_features(cargo_args, version)
+    if feature:
+        add_features(cargo_args, version)
 
-    if not global_args.quiet and '--verbose' not in cargo_args and '-v' not in cargo_args:
+    if not args.quiet and '--verbose' not in args and '-v' not in cargo_args:
         cargo_args.append('--verbose')
 
     run('cargo', subcommand, *cargo_args)
 
-def doc_upload(version, manifest, global_args, subcommand, args):
+def cargo_feature(version, manifest, args):
+    cargo_raw(True, version, manifest, args)
+def cargo_no_feature(version, manifest, args):
+    cargo_raw(False, version, manifest, args)
+
+def doc_upload(version, manifest, args):
     branch = os.environ['TRAVIS_BRANCH']
     pr = os.environ['TRAVIS_PULL_REQUEST']
     token = os.environ['GH_TOKEN']
@@ -106,13 +115,8 @@ def raw_coverage(test_args, merge_msg, kcov_merge_args, kcov_merge_dir):
     # FIXME: the information cargo feeds us is
     # inconsistent/inaccurate, so using the output of read-manifest is
     # far too much trouble.
-    try:
-        output = subprocess.check_output(['cargo', 'test'] + list(cargo_args),
-                                         stderr=sys.stderr)
-    except subprocess.CalledProcessError as e:
-        print(e.output.decode())
-        exit(e.returncode)
-    output = output.decode()
+
+    output = run_output('cargo', 'test', *test_args)
     running = re.compile('^     Running target/debug/(.*)$', re.M)
     for line in running.finditer(output):
         test_binaries.append(line.group(1))
@@ -129,14 +133,14 @@ def raw_coverage(test_args, merge_msg, kcov_merge_args, kcov_merge_dir):
     kcov_args += ('target/kcov-' + b for b in test_binaries)
     run(*kcov_args)
 
-def coverage(version, manifest, global_args, subcommand, args):
+def coverage(version, manifest, args):
     cargo_args = args.cargo_args
     add_features(cargo_args, version)
 
     kcov_merge_dir = args.merge_into
     raw_coverage(cargo_args, 'Merging coverage', [], kcov_merge_dir)
 
-def coveralls(version, manifest, global_args, subcommand, args):
+def coveralls(version, manifest, args):
     job_id = os.environ['TRAVIS_JOB_ID']
 
     cargo_args = args.cargo_args
@@ -147,85 +151,123 @@ def coveralls(version, manifest, global_args, subcommand, args):
 
 
 # user interface
-
 class ScInfo(object):
-    def __init__(self, func, description, arguments):
+    def __init__(self, func, description, arguments, help_=None, is_cargo=False):
         self.func = func
+        self.help = help_
         self.description = description
         self.arguments = arguments
+        self.is_cargo = is_cargo
         for _name, options in arguments:
             assert isinstance(options, dict)
 
 SC_INFO = {
     'doc-upload': ScInfo(func = doc_upload,
                          description = 'Use ghp-import to upload cargo-rendered '
-                         'docs from the master branch',
+                         'docs to Github Pages, from the master branch.',
+                         help_ = 'upload documentation to Github pages.',
                          arguments = []),
     'coveralls': ScInfo(func = coveralls,
                         description = 'Record coverage of `cargo test` and upload to '
                         'coveralls.io with kcov, this runs all binaries that `cargo test` runs '
                         'but not doc tests. Merged kcov results can be accessed in `target/kcov`.',
-                    arguments = [(['cargo_args'], {
-                        'metavar': 'ARGS',
-                        'nargs': '*',
-                        'help': 'arguments to pass to `cargo test`'
-                    })]),
+                        help_ = 'record and upload code coverage to coveralls.io',
+                        arguments = [(['cargo_args'], {
+                            'metavar': 'ARGS',
+                            'nargs': '*',
+                            'help': 'arguments to pass to `cargo test`'
+                        })]),
     'coverage': ScInfo(func = coverage,
                        description = 'Record coverage of `cargo test`, this runs all '
                        'binaries that `cargo test` runs but not doc tests. The results '
                        'of all tests are merged into a single directory.',
-                   arguments = [(['cargo_args'], {
-                        'metavar': 'ARGS',
-                        'nargs': '*',
-                        'help': 'arguments to pass to `cargo test`'
-                    }),
-                            (['-m', '--merge-into'], {
-                                'metavar': 'DIR',
-                                'default': 'target/kcov',
-                                'help': 'the directory to put the final merged kcov '
-                                'result into (default `target/kcov`)'
-                            })])
+                       help_ = 'record code coverage',
+                       arguments = [(['cargo_args'], {
+                           'metavar': 'ARGS',
+                           'nargs': '*',
+                           'help': 'arguments to pass to `cargo test`'
+                       }),
+                                    (['-m', '--merge-into'], {
+                                        'metavar': 'DIR',
+                                        'default': 'target/kcov',
+                                        'help': 'the directory to put the final merged kcov '
+                                        'result into (default `target/kcov`)'
+                                    })])
 }
-DEFAULT_SC_INFO = ScInfo(
-    func = cargo,
-    description = 'runs `cargo {name}`',
-    arguments = [(['cargo_args'], {
-        'metavar': 'ARGS',
-        'nargs': '*',
-        'help': 'arguments to pass to `cargo test`'
-    })])
+
+def cargo_sc(name, features):
+    return ScInfo(func = cargo_feature if features else cargo_no_feature,
+                  description = 'Run `cargo %s`' % name,
+                  is_cargo = True,
+                  arguments = [(['cargo_args'], {
+                      'metavar': 'ARGS',
+                      'nargs': '*',
+                      'help': 'arguments to pass to `cargo %s`' % name
+                  })])
+
+NO_FEATURE_CARGO = [
+    'clean', 'fetch', 'generate-lockfile', 'git-checkout', 'help', 'locate-project',
+    'login', 'new', 'owner', 'package', 'pkgid', 'publish', 'read-manifest', 'search',
+    'update', 'verify-project', 'version', 'yank'
+]
+FEATURE_CARGO = [
+    'build', 'bench', 'test', 'doc', 'run'
+]
+SC_INFO.update((c, cargo_sc(c, False)) for c in NO_FEATURE_CARGO)
+SC_INFO.update((c, cargo_sc(c, True)) for c in FEATURE_CARGO)
 
 def main():
-    known_subcommands = [k for k in SC_INFO]
-    # main parser
-    parser = argparse.ArgumentParser(description = 'Manages interactions between Travis '
-                                     'and Cargo and common tooling tasks')
+    parser = argparse.ArgumentParser(description = '''
+Manages interactions between Travis and Cargo and common tooling tasks.
+''')
 
     parser.add_argument('-q','--quiet', action='store_true', default=False,
-                        help='don\'t pass --verbose to cargo')
+                        help='don\'t pass --verbose to cargo subcommands')
     parser.add_argument('--only', metavar='VERSION',
                         help='only run the given command if the specified version matches '
                         '`TRAVIS_RUST_VERSION`')
-    parser.add_argument('command', metavar='{%s,COMMAND}' % ','.join(known_subcommands),
-                        help='the command to run, unrecognised COMMANDs are passed to cargo')
-    parser.add_argument('args', metavar='ARGS', nargs='*',
-                        help='additional arguments')
 
-    global_args = parser.parse_args()
+    sb = parser.add_subparsers(metavar = '{coverage,coveralls,doc-upload,...}',
+                               description = '''
 
-    # parser for the individual subcommand
-    info = SC_INFO.get(global_args.command, DEFAULT_SC_INFO)
-    descr = info.description.format(name = global_args.command)
-    subcommand_parser = argparse.ArgumentParser(prog=sys.argv[0] + ' ' + global_args.command,
-                                                description = descr)
-    for name, options in info.arguments:
-        subcommand_parser.add_argument(*name, **options)
-    args = subcommand_parser.parse_args(global_args.args)
+travis-cargo supports all cargo subcommands, and selected others
+(listed below).
 
+Cargo subcommands have `--verbose` added to their invocation by
+default, and, when running with a nightly compiler, `--features
+unstable` (or `--features $TRAVIS_CARGO_NIGHTLY_FEATURE` if that
+environment variable is defined) if `--features` is a valid argument.
 
-    version = os.environ['TRAVIS_RUST_VERSION']
-    if global_args.only and global_args.only != version:
+''',
+                               dest = 'subcommand')
+    for _, name, sc in sorted((sc.is_cargo, n, sc) for n, sc in SC_INFO.items()):
+        extra_args = {'help': sc.help} if sc.help is not None else {}
+        sub_parser = sb.add_parser(name,
+                                   description = sc.description,
+                                   **extra_args)
+        sub_parser.set_defaults(func = sc.func)
+        for name, options in sc.arguments:
+            sub_parser.add_argument(*name, **options)
+
+    args = parser.parse_args()
+
+    version = os.environ.get('TRAVIS_RUST_VERSION', None)
+    if version is None:
+        # fill in the version based on the compiler's version output.
+        output = run_output('rustc', '-V')
+        phrases = ['nightly', ('dev', 'nightly'), 'beta']
+        for phrase in phrases:
+            if isinstance(phrase, tuple):
+                alias = phrase[1]
+                phrase = phrase[0]
+            else:
+                alias = phrase
+            if phrase in output:
+                version = alias
+                break
+
+    if args.only and args.only != version:
         return
 
     manifest = Manifest(os.getcwd())
-    info.func(version, manifest, global_args, global_args.command, args)
+    args.func(version, manifest, args)

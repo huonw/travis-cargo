@@ -211,7 +211,7 @@ NO_FEATURE_CARGO = [
     'update', 'verify-project', 'version', 'yank'
 ]
 FEATURE_CARGO = [
-    'build', 'bench', 'test', 'doc', 'run'
+    'build', 'bench', 'test', 'doc', 'run', 'rustc',
 ]
 SC_INFO.update((c, cargo_sc(c, False)) for c in NO_FEATURE_CARGO)
 SC_INFO.update((c, cargo_sc(c, True)) for c in FEATURE_CARGO)

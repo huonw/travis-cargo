@@ -9,12 +9,12 @@ CLASSIFIERS = [
 
 setup(
     name = 'travis-cargo',
-    version = '0.1.1',
+    version = '0.1.2',
     description = ('Manages interactions between travis and cargo/rust compilers.'),
     author = 'Huon Wilson',
     author_email = 'dbau.pp@gmail.com',
     url = 'https://github.com/huonw/travis-cargo',
-    download_url = 'https://github.com/huonw/travis-cargo/tarball/0.1.1',
+    download_url = 'https://github.com/huonw/travis-cargo/tarball/0.1.2',
     keywords = ['testing', 'travis', 'rust', 'cargo'],
     packages = find_packages(),
     py_modules = ['travis_cargo'],

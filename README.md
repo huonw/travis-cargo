@@ -98,8 +98,9 @@ Extra arguments can be passed to `cargo` invocations, although
 build -- --features something`.
 
 If you do not wish to define an `unstable` or similar feature, setting
-`TRAVIS_CARGO_NIGHTLY_FEATURE=` should avoid errors caused by
-undefined features.
+`TRAVIS_CARGO_NIGHTLY_FEATURE=""` should avoid errors caused by undefined
+features.
+
 
 ## Help
 

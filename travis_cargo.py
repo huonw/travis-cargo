@@ -86,7 +86,9 @@ def build_kcov(use_sudo):
     if use_sudo:
         deps = 'sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev cmake'
     init = deps + '''
-    git clone --depth 1 https://github.com/SimonKagstrom/kcov
+    wget https://github.com/SimonKagstrom/kcov/archive/master.zip
+    unzip master.zip
+    mv kcov-master kcov
     mkdir kcov/build
     '''
     for line in init.split('\n'):

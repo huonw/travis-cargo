@@ -169,8 +169,8 @@ class ScInfo(object):
 NO_SUDO = (['--no-sudo'], {
     'action': 'store_true',
     'default': False,
-    'help': 'don\'t use `sudo` to install kcov\'s deps. Requires that'
-    'libcurl4-openssl-dev, libelf-dev and libdw-dev are installed (e.g. via'
+    'help': 'don\'t use `sudo` to install kcov\'s deps. Requires that '
+    'libcurl4-openssl-dev, libelf-dev and libdw-dev are installed (e.g. via '
     '`addons: apt: packages:`)'
 })
 

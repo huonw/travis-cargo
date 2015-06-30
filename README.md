@@ -58,12 +58,19 @@ A possible `.travis.yml` configuration is:
 
 ```yaml
 language: rust
-# necessary for `travis-cargo coveralls`
-sudo: required
-# run builds for both the nightly and beta branch
+# necessary for `travis-cargo coveralls --no-sudo`
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+
+# run builds for both all the trains
 rust:
   - nightly
   - beta
+  - stable
 
 # load travis-cargo
 before_script:
@@ -77,13 +84,13 @@ script:
       travis-cargo build &&
       travis-cargo test &&
       travis-cargo bench &&
-      travis-cargo --only beta doc
+      travis-cargo --only stable doc
 after_success:
   # upload the documentation from the build with beta (automatically only actually
   # runs on the master branch)
-  - travis-cargo --only beta doc-upload
+  - travis-cargo --only stable doc-upload
   # measure code coverage and upload to coveralls.io
-  - travis-cargo coveralls
+  - travis-cargo coveralls --no-sudo
 
 env:
   global:
@@ -145,6 +152,9 @@ optional arguments:
   -m DIR, --merge-into DIR
                         the directory to put the final merged kcov result into
                         (default `target/kcov`)
+  --no-sudo             don't use `sudo` to install kcov's deps. Requires that
+                        libcurl4-openssl-dev, libelf-dev and libdw-dev are
+                        installed (e.g. via `addons: apt: packages:`)
 ```
 
 ### `coveralls`
@@ -161,6 +171,9 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
+  --no-sudo             don't use `sudo` to install kcov's deps. Requires that
+                        libcurl4-openssl-dev, libelf-dev and libdw-dev are
+                        installed (e.g. via `addons: apt: packages:`)
 ```
 
 ### `doc-upload`

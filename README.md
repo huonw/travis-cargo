@@ -36,9 +36,11 @@ I've written some things about this:
 
 - [Helping Travis catch the rustc train][train]
 - [Travis on the train, part 2][part2]
+- [travis-cargo 0.1.3: --no-sudo][nosudo]
 
 [train]: http://huonw.github.io/blog/2015/04/helping-travis-catch-the-rustc-train/
 [part2]: http://huonw.github.io/blog/2015/05/travis-on-the-train-part-2/
+[nosudo]: http://huonw.github.io/blog/2015/06/travis-cargo-0.1.3/
 
 ## Installation
 

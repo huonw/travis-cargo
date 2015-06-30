@@ -81,9 +81,11 @@ def doc_upload(version, manifest, args):
         run('./ghp-import/ghp-import', '-n', 'target/doc')
         run('git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
 
-def build_kcov():
-    init = '''
-    sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev cmake
+def build_kcov(use_sudo):
+    deps = ''
+    if use_sudo:
+        deps = 'sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev cmake'
+    init = deps + '''
     git clone --depth 1 https://github.com/SimonKagstrom/kcov
     mkdir kcov/build
     '''
@@ -97,7 +99,7 @@ def build_kcov():
     build = '''
     cmake ..
     make
-    sudo make install
+    make install DESTDIR=../built
     '''
     for line in build.split('\n'):
         line = line.strip()
@@ -105,9 +107,10 @@ def build_kcov():
             print('Running: %s' % line)
             run(*line.split())
     os.chdir(current)
+    return os.path.join(current, 'kcov/built/usr/local/bin/kcov')
 
-def raw_coverage(test_args, merge_msg, kcov_merge_args, kcov_merge_dir):
-    build_kcov()
+def raw_coverage(use_sudo, test_args, merge_msg, kcov_merge_args, kcov_merge_dir):
+    kcov = build_kcov(use_sudo)
 
     test_binaries = []
     # look through the output of `cargo test` to find the test
@@ -125,11 +128,11 @@ def raw_coverage(test_args, merge_msg, kcov_merge_args, kcov_merge_dir):
     # record coverage for each binary
     for binary in test_binaries:
         print('Recording %s' % binary)
-        run('kcov', '--exclude-pattern=/.cargo', 'target/kcov-' + binary,
+        run(kcov, '--exclude-pattern=/.cargo', 'target/kcov-' + binary,
             'target/debug/' + binary)
     # merge all the coverages and upload in one go
     print(merge_msg)
-    kcov_args = ['kcov', '--merge'] + kcov_merge_args + [kcov_merge_dir]
+    kcov_args = [kcov, '--merge'] + kcov_merge_args + [kcov_merge_dir]
     kcov_args += ('target/kcov-' + b for b in test_binaries)
     run(*kcov_args)
 
@@ -138,7 +141,7 @@ def coverage(version, manifest, args):
     add_features(cargo_args, version)
 
     kcov_merge_dir = args.merge_into
-    raw_coverage(cargo_args, 'Merging coverage', [], kcov_merge_dir)
+    raw_coverage(not args.no_sudo, cargo_args, 'Merging coverage', [], kcov_merge_dir)
 
 def coveralls(version, manifest, args):
     job_id = os.environ['TRAVIS_JOB_ID']
@@ -146,7 +149,7 @@ def coveralls(version, manifest, args):
     cargo_args = args.cargo_args
     add_features(cargo_args, version)
 
-    raw_coverage(cargo_args, 'Uploading coverage',
+    raw_coverage(not args.no_sudo, cargo_args, 'Uploading coverage',
                  ['--coveralls-id=' + job_id], 'target/kcov')
 
 
@@ -160,6 +163,14 @@ class ScInfo(object):
         self.is_cargo = is_cargo
         for _name, options in arguments:
             assert isinstance(options, dict)
+
+NO_SUDO = (['--no-sudo'], {
+    'action': 'store_true',
+    'default': False,
+    'help': 'don\'t use `sudo` to install kcov\'s deps. Requires that'
+    'libcurl4-openssl-dev, libelf-dev and libdw-dev are installed (e.g. via'
+    '`addons: apt: packages:`)'
+})
 
 SC_INFO = {
     'doc-upload': ScInfo(func = doc_upload,
@@ -176,7 +187,8 @@ SC_INFO = {
                             'metavar': 'ARGS',
                             'nargs': '*',
                             'help': 'arguments to pass to `cargo test`'
-                        })]),
+                        }),
+                                     NO_SUDO]),
     'coverage': ScInfo(func = coverage,
                        description = 'Record coverage of `cargo test`, this runs all '
                        'binaries that `cargo test` runs but not doc tests. The results '
@@ -192,7 +204,8 @@ SC_INFO = {
                                         'default': 'target/kcov',
                                         'help': 'the directory to put the final merged kcov '
                                         'result into (default `target/kcov`)'
-                                    })])
+                                    }),
+                                    NO_SUDO])
 }
 
 def cargo_sc(name, features):

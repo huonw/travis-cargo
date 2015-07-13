@@ -23,9 +23,9 @@ Features:
   Travis, and the `test` [profile][profile] must have `debug = true`
   (this is the default)
 
-[hoverbear]: http://www.hoverbear.org/2015/03/07/rust-travis-github-pages/
+[hoverbear]: http://www.hoverbear.org/2015/03/06/rust-travis-github-pages/
 [nosudo]: http://huonw.github.io/blog/2015/04/little-libraries/#the-process
-[ghtoken]: http://www.hoverbear.org/2015/03/07/rust-travis-github-pages/#givingtravispermissions
+[ghtoken]: http://www.hoverbear.org/2015/03/06/rust-travis-github-pages/#givingtravispermissions
 [coveralls]: http://coveralls.io
 [profile]: http://doc.crates.io/manifest.html#the-[profile.*]-sections
 

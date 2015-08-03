@@ -68,11 +68,15 @@ addons:
       - libelf-dev
       - libdw-dev
 
-# run builds for both all the trains
+# run builds for all the trains (and more)
 rust:
   - nightly
   - beta
+  # check it compiles on the latest stable compiler
   - stable
+  # and the first stable one (this should be bumped as the minimum
+  # Rust version required changes)
+  - 1.0.0
 
 # load travis-cargo
 before_script:
@@ -88,8 +92,8 @@ script:
       travis-cargo bench &&
       travis-cargo --only stable doc
 after_success:
-  # upload the documentation from the build with beta (automatically only actually
-  # runs on the master branch)
+  # upload the documentation from the build with stable (automatically only actually
+  # runs on the master branch, not individual PRs)
   - travis-cargo --only stable doc-upload
   # measure code coverage and upload to coveralls.io
   - travis-cargo coveralls --no-sudo

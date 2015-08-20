@@ -2,10 +2,12 @@
 
 [![Build Status](https://travis-ci.org/huonw/travis-cargo.svg?branch=master)](https://travis-ci.org/huonw/travis-cargo)
 
-This provides a standalone script `travis-cargo` that manages
-running cargo and several other related features on [Travis CI][travis].
+This provides a standalone script `travis-cargo` that manages running
+cargo and several other related features on [Travis CI][travis] (and
+somewhat on [AppVeyor]).
 
 [travis]: http://travis-ci.org
+[AppVeyor]: http://www.appveyor.com/
 
 Features:
 

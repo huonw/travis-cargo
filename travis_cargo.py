@@ -61,10 +61,13 @@ def cargo_no_feature(version, manifest, args):
     cargo_raw(False, version, manifest, args)
 
 def doc_upload(version, manifest, args):
-    branch = os.environ['TRAVIS_BRANCH']
-    pr = os.environ['TRAVIS_PULL_REQUEST']
+    branch = os.environ.get('APPVEYOR_REPO_BRANCH') or os.environ['TRAVIS_BRANCH']
     token = os.environ['GH_TOKEN']
-    repo = os.environ['TRAVIS_REPO_SLUG']
+    repo = os.environ.get('APPVEYOR_REPO_NAME') or os.environ['TRAVIS_REPO_SLUG']
+    if os.environ.get('APPVEYOR_PULL_REQUEST_NUMBER'):
+        pr = 'true'
+    else:
+        pr = os.environ.get('TRAVIS_PULL_REQUEST', 'false')
 
     lib_name = manifest.lib_name()
     if lib_name is None:
@@ -78,7 +81,7 @@ def doc_upload(version, manifest, args):
             f.write('<meta http-equiv=refresh content=0;url=%s/index.html>' % lib_name)
 
         run('git', 'clone', 'https://github.com/davisp/ghp-import')
-        run('./ghp-import/ghp-import', '-n', 'target/doc')
+        run(sys.executable, './ghp-import/ghp-import', '-n', 'target/doc')
         run('git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
 
 def build_kcov(use_sudo):

@@ -62,7 +62,6 @@ def cargo_no_feature(version, manifest, args):
 
 def doc_upload(version, manifest, args):
     branch = os.environ.get('APPVEYOR_REPO_BRANCH') or os.environ['TRAVIS_BRANCH']
-    token = os.environ['GH_TOKEN']
     repo = os.environ.get('APPVEYOR_REPO_NAME') or os.environ['TRAVIS_REPO_SLUG']
     if os.environ.get('APPVEYOR_PULL_REQUEST_NUMBER'):
         pr = 'true'
@@ -75,6 +74,11 @@ def doc_upload(version, manifest, args):
         exit(1)
 
     if branch == 'master' and pr == 'false':
+        # only load the token when we're sure we're uploading (travis
+        # won't decrypt secret keys for PRs, so loading this with the
+        # other vars causes problems with tests)
+        token = os.environ['GH_TOKEN']
+
         print('uploading docs...')
         sys.stdout.flush()
         with open('target/doc/index.html', 'w') as f:

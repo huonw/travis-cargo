@@ -73,7 +73,7 @@ def doc_upload(version, manifest, args):
         sys.stderr.write('error: uploading docs for package with no library')
         exit(1)
 
-    if branch == 'master' and pr == 'false':
+    if branch == args.branch and pr == 'false':
         # only load the token when we're sure we're uploading (travis
         # won't decrypt secret keys for PRs, so loading this with the
         # other vars causes problems with tests)
@@ -186,7 +186,10 @@ SC_INFO = {
                          description = 'Use ghp-import to upload cargo-rendered '
                          'docs to Github Pages, from the master branch.',
                          help_ = 'upload documentation to Github pages.',
-                         arguments = []),
+                         arguments = [(['--branch'], {
+                             'default': 'master',
+                             'help': 'upload docs when on this branch, defaults to master',
+                         })]),
     'coveralls': ScInfo(func = coveralls,
                         description = 'Record coverage of `cargo test` and upload to '
                         'coveralls.io with kcov, this runs all binaries that `cargo test` runs '

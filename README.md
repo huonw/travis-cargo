@@ -188,11 +188,12 @@ optional arguments:
 ### `doc-upload`
 
 ```
-usage: travis-cargo doc-upload [-h]
+usage: travis_cargo.py doc-upload [-h] [--branch BRANCH]
 
 Use ghp-import to upload cargo-rendered docs to Github Pages, from the master
 branch.
 
 optional arguments:
-  -h, --help  show this help message and exit
+  -h, --help       show this help message and exit
+  --branch BRANCH  upload docs when on this branch, defaults to master
 ```

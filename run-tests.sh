@@ -24,6 +24,7 @@ cargo clean
 travis-cargo test -- --features 'remove-failing'
 if [ "$TRAVIS_RUST_VERSION" = nightly ]; then
     travis-cargo test -- --features 'remove-failing' | grep default_unstable_test
+    travis-cargo test -- --features='remove-failing' | grep default_unstable_test
     TRAVIS_CARGO_NIGHTLY_FEATURE="custom-unstable" \
         travis-cargo test -- --features 'remove-failing' | grep custom_unstable_test
 

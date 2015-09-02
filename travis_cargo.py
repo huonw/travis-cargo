@@ -46,6 +46,9 @@ def add_features(cargo_args, version):
             if cargo_args[i] == '--features':
                 cargo_args[i + 1] += ' ' + nightly_feature
                 break
+            elif cargo_args[i].startswith('--features='):
+                cargo_args[i] += ' ' + nightly_feature
+                break
         else:
             cargo_args += ['--features', nightly_feature]
 

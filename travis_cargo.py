@@ -18,8 +18,14 @@ def target_binary_name(target):
     return target['name'].replace('-', '_') + target['metadata']['extra_filename']
 
 class Manifest(object):
-    def __init__(self, dir):
-        self.manifest = json.loads(run_output('cargo', 'read-manifest', '--manifest-path', dir))
+    def __init__(self, dir, version):
+        # the --manifest-path behaviour changed in https://github.com/rust-lang/cargo/pull/1955
+        if version in ('nightly', 'dev'):
+            path = os.path.join(dir, 'Cargo.toml')
+        else:
+            path = dir
+
+        self.manifest = json.loads(run_output('cargo', 'read-manifest', '--manifest-path', path))
     def targets(self):
         return self.manifest['targets']
     def lib_name(self):
@@ -294,5 +300,5 @@ environment variable is defined) if `--features` is a valid argument.
     if args.only and args.only != version:
         return
 
-    manifest = Manifest(os.getcwd())
+    manifest = Manifest(os.getcwd(), version)
     args.func(version, manifest, args)

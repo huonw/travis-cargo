@@ -37,7 +37,11 @@ class Manifest(object):
 
 def add_features(cargo_args, version):
     nightly_feature = os.environ.get('TRAVIS_CARGO_NIGHTLY_FEATURE', 'unstable')
-    if version == 'nightly':
+    if version == 'nightly' and nightly_feature != '':
+        # only touch feature arguments when we are actually going to
+        # add something non-trivial, avoids problems like that in
+        # issue #14 (can't use -p ... on nightly even with an empty
+        # nightly feature).
         for i in range(0, len(cargo_args)):
             if cargo_args[i] == '--features':
                 cargo_args[i + 1] += ' ' + nightly_feature

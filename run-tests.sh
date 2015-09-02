@@ -28,6 +28,10 @@ if [ "$TRAVIS_RUST_VERSION" = nightly ]; then
         travis-cargo test -- --features 'remove-failing' | grep custom_unstable_test
 
     travis-cargo bench -- --features 'remove-failing' | grep unstable_benchmark
+
+    # issue #14: can't use -p on nightly since the --feature was
+    # unconditionally passed, even when empty
+    TRAVIS_CARGO_NIGHTLY_FEATURE='' travis-cargo build -- -p travis-cargo-test
 else
     travis-cargo bench -- --features 'remove-failing' | grep skipping
 fi

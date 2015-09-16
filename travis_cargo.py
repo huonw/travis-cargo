@@ -20,7 +20,7 @@ def target_binary_name(target):
 class Manifest(object):
     def __init__(self, dir, version):
         # the --manifest-path behaviour changed in https://github.com/rust-lang/cargo/pull/1955
-        if version in ('nightly', 'dev'):
+        if version in ('nightly', 'dev', 'beta'):
             path = os.path.join(dir, 'Cargo.toml')
         else:
             path = dir

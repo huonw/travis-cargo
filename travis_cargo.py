@@ -121,7 +121,6 @@ def build_kcov(use_sudo):
     build = '''
     cmake ..
     make
-    make install DESTDIR=../built
     '''
     for line in build.split('\n'):
         line = line.strip()
@@ -129,7 +128,7 @@ def build_kcov(use_sudo):
             print('Running: %s' % line)
             run(*line.split())
     os.chdir(current)
-    return os.path.join(current, 'kcov/built/usr/local/bin/kcov')
+    return os.path.join(current, 'kcov/build/src/kcov')
 
 def raw_coverage(use_sudo, test_args, merge_msg, kcov_merge_args, kcov_merge_dir):
     kcov = build_kcov(use_sudo)

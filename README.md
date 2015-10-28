@@ -120,7 +120,7 @@ features.
 ## Help
 
 ```
-usage: travis-cargo [-h] [-q] [--only VERSION]
+usage: travis-cargo [-h] [-q] [--only VERSION] [--skip VERSION]
                     {coverage,coveralls,doc-upload,...} ...
 
 Manages interactions between Travis and Cargo and common tooling tasks.

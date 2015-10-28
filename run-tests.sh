@@ -14,6 +14,10 @@ cd "$dir"
 travis-cargo --only xx$TRAVIS_RUST_VERSION build
 test ! -d target
 
+# a skipped version does nothing
+travis-cargo --skip $TRAVIS_RUST_VERSION build
+test ! -d target
+
 # noisy builds by default
 travis-cargo build | grep Running
 cargo clean

@@ -263,6 +263,9 @@ Manages interactions between Travis and Cargo and common tooling tasks.
     parser.add_argument('--only', metavar='VERSION',
                         help='only run the given command if the specified version matches '
                         '`TRAVIS_RUST_VERSION`')
+    parser.add_argument('--skip', metavar='VERSION',
+                        help='only run the given command if the specified version does not match '
+                        '`TRAVIS_RUST_VERSION`')
 
     sb = parser.add_subparsers(metavar = '{coverage,coveralls,doc-upload,...}',
                                description = '''
@@ -305,6 +308,9 @@ environment variable is defined) if `--features` is a valid argument.
 
     if args.only and args.only != version:
         return
+
+    if args.skip and args.skip == version:
+      return
 
     manifest = Manifest(os.getcwd(), version)
     args.func(version, manifest, args)

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import argparse
 import os, sys, subprocess, json, re
 
@@ -19,13 +20,31 @@ def target_binary_name(target):
 
 class Manifest(object):
     def __init__(self, dir, version):
-        # the --manifest-path behaviour changed in https://github.com/rust-lang/cargo/pull/1955
-        if version in ('nightly', 'dev', 'beta'):
-            path = os.path.join(dir, 'Cargo.toml')
-        else:
-            path = dir
+        # the --manifest-path behaviour changed in
+        # https://github.com/rust-lang/cargo/pull/1955, so we need to
+        # be careful to handle both
+        path_file = os.path.join(dir, 'Cargo.toml')
+        path_dir = dir
 
-        self.manifest = json.loads(run_output('cargo', 'read-manifest', '--manifest-path', path))
+        try:
+            output = subprocess.check_output(['cargo', 'read-manifest', '--manifest-path',
+                                              path_file],
+                                             stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            try:
+                output = subprocess.check_output(['cargo', 'read-manifest', '--manifest-path',
+                                                  path_dir],
+                                                 stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as e2:
+                print('Cargo failed to read `--manifest-path {}`'
+                      ' and `--manifest-path {}`:' % (path_file, path_dir),
+                      file = sys.sdterr)
+                print(e.output.decode())
+                print(e2.output.decode())
+                exit(e.returncode)
+
+        self.manifest = json.loads(output.decode())
+
     def targets(self):
         return self.manifest['targets']
     def lib_name(self):

@@ -61,6 +61,7 @@ above to protect against this.
 A possible `.travis.yml` configuration is:
 
 ```yaml
+sudo: false
 language: rust
 # necessary for `travis-cargo coveralls --no-sudo`
 addons:

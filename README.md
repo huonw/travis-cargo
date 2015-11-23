@@ -70,6 +70,7 @@ addons:
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
+      - binutils-dev # optional: only required for the --verify flag of coveralls
 
 # run builds for all the trains (and more)
 rust:
@@ -98,8 +99,10 @@ after_success:
   # upload the documentation from the build with stable (automatically only actually
   # runs on the master branch, not individual PRs)
   - travis-cargo --only stable doc-upload
-  # measure code coverage and upload to coveralls.io
-  - travis-cargo coveralls --no-sudo
+  # measure code coverage and upload to coveralls.io (the verify
+  # argument mitigates kcov crashes due to malformed debuginfo, at the
+  # cost of some speed <https://github.com/huonw/travis-cargo/issues/12>)
+  - travis-cargo coveralls --no-sudo --verify
 
 env:
   global:
@@ -165,6 +168,9 @@ optional arguments:
   --no-sudo             don't use `sudo` to install kcov's deps. Requires that
                         libcurl4-openssl-dev, libelf-dev and libdw-dev are
                         installed (e.g. via `addons: apt: packages:`)
+  --verify              pass `--verify` to kcov, to avoid some crashes. See
+                        <https://github.com/huonw/travis-cargo/issues/12>.
+                        This requires installing the `binutils-dev` package.
 ```
 
 ### `coveralls`
@@ -181,9 +187,12 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
-  --no-sudo             don't use `sudo` to install kcov's deps. Requires that
-                        libcurl4-openssl-dev, libelf-dev and libdw-dev are
-                        installed (e.g. via `addons: apt: packages:`)
+  --no-sudo   don't use `sudo` to install kcov's deps. Requires that libcurl4
+              -openssl-dev, libelf-dev and libdw-dev are installed (e.g. via
+              `addons: apt: packages:`)
+  --verify    pass `--verify` to kcov, to avoid some crashes. See
+              <https://github.com/huonw/travis-cargo/issues/12>. This requires
+              installing the `binutils-dev` package.
 ```
 
 ### `doc-upload`

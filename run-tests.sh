@@ -45,6 +45,14 @@ fi
 travis-cargo doc
 travis-cargo doc-upload
 
+travis-cargo coverage -m target/coverage --verify -- --features 'remove-failing'
+# the two source file names should appear somewhere in the coverage
+# output
+for pattern in "$dir/tests/foo.rs" "$dir/src/lib.rs"; do
+    grep "$pattern" target/coverage/kcov-merged/index.json
+done
+rm -rf target/coverage kcov
+
 travis-cargo coverage -m target/coverage -- --features 'remove-failing'
 # the two source file names should appear somewhere in the coverage
 # output

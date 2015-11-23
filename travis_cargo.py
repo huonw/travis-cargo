@@ -120,10 +120,12 @@ def doc_upload(version, manifest, args):
         run(sys.executable, './ghp-import/ghp-import', '-n', 'target/doc')
         run('git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
 
-def build_kcov(use_sudo):
+def build_kcov(use_sudo, verify):
     deps = ''
     if use_sudo:
         deps = 'sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev cmake'
+        if verify:
+            deps += ' binutils-dev'
     init = deps + '''
     wget https://github.com/SimonKagstrom/kcov/archive/master.zip
     unzip master.zip
@@ -149,8 +151,8 @@ def build_kcov(use_sudo):
     os.chdir(current)
     return os.path.join(current, 'kcov/build/src/kcov')
 
-def raw_coverage(use_sudo, test_args, merge_msg, kcov_merge_args, kcov_merge_dir):
-    kcov = build_kcov(use_sudo)
+def raw_coverage(use_sudo, verify, test_args, merge_msg, kcov_merge_args, kcov_merge_dir):
+    kcov = build_kcov(use_sudo, verify)
 
     test_binaries = []
     # look through the output of `cargo test` to find the test
@@ -168,8 +170,12 @@ def raw_coverage(use_sudo, test_args, merge_msg, kcov_merge_args, kcov_merge_dir
     # record coverage for each binary
     for binary in test_binaries:
         print('Recording %s' % binary)
-        run(kcov, '--exclude-pattern=/.cargo', 'target/kcov-' + binary,
-            'target/debug/' + binary)
+        kcov_args = [kcov]
+        if verify:
+            kcov_args += ['--verify']
+        kcov_args += ['--exclude-pattern=/.cargo', 'target/kcov-' + binary,
+                      'target/debug/' + binary]
+        run(*kcov_args)
     # merge all the coverages and upload in one go
     print(merge_msg)
     kcov_args = [kcov, '--merge'] + kcov_merge_args + [kcov_merge_dir]
@@ -181,7 +187,7 @@ def coverage(version, manifest, args):
     add_features(cargo_args, version)
 
     kcov_merge_dir = args.merge_into
-    raw_coverage(not args.no_sudo, cargo_args, 'Merging coverage', [], kcov_merge_dir)
+    raw_coverage(not args.no_sudo, args.verify, cargo_args, 'Merging coverage', [], kcov_merge_dir)
 
 def coveralls(version, manifest, args):
     job_id = os.environ['TRAVIS_JOB_ID']
@@ -189,7 +195,7 @@ def coveralls(version, manifest, args):
     cargo_args = args.cargo_args
     add_features(cargo_args, version)
 
-    raw_coverage(not args.no_sudo, cargo_args, 'Uploading coverage',
+    raw_coverage(not args.no_sudo, args.verify, cargo_args, 'Uploading coverage',
                  ['--coveralls-id=' + job_id], 'target/kcov')
 
 
@@ -211,6 +217,13 @@ NO_SUDO = (['--no-sudo'], {
     'libcurl4-openssl-dev, libelf-dev and libdw-dev are installed (e.g. via '
     '`addons: apt: packages:`)'
 })
+VERIFY = (['--verify'], {
+    'action': 'store_true',
+    'default': False,
+    'help': 'pass `--verify` to kcov, to avoid some crashes. See '
+    '<https://github.com/huonw/travis-cargo/issues/12>. This requires '
+    'installing the `binutils-dev` package.'
+})
 
 SC_INFO = {
     'doc-upload': ScInfo(func = doc_upload,
@@ -231,7 +244,8 @@ SC_INFO = {
                             'nargs': '*',
                             'help': 'arguments to pass to `cargo test`'
                         }),
-                                     NO_SUDO]),
+                                     NO_SUDO,
+                                     VERIFY]),
     'coverage': ScInfo(func = coverage,
                        description = 'Record coverage of `cargo test`, this runs all '
                        'binaries that `cargo test` runs but not doc tests. The results '
@@ -248,7 +262,8 @@ SC_INFO = {
                                         'help': 'the directory to put the final merged kcov '
                                         'result into (default `target/kcov`)'
                                     }),
-                                    NO_SUDO])
+                                    NO_SUDO,
+                                    VERIFY])
 }
 
 def cargo_sc(name, features):

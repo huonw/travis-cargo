@@ -11,9 +11,9 @@ def run_output(*args):
         output = subprocess.check_output(args,
                                          stderr=sys.stderr)
     except subprocess.CalledProcessError as e:
-        print(e.output.decode())
+        print(e.output.decode('utf-8'))
         exit(e.returncode)
-    return output.decode()
+    return output.decode('utf-8')
 
 def target_binary_name(target):
     return target['name'].replace('-', '_') + target['metadata']['extra_filename']
@@ -39,11 +39,11 @@ class Manifest(object):
                 print('Cargo failed to read `--manifest-path {}`'
                       ' and `--manifest-path {}`:' % (path_file, path_dir),
                       file = sys.sdterr)
-                print(e.output.decode())
-                print(e2.output.decode())
+                print(e.output.decode('utf-8'))
+                print(e2.output.decode('utf-8'))
                 exit(e.returncode)
 
-        self.manifest = json.loads(output.decode())
+        self.manifest = json.loads(output.decode('utf-8'))
 
     def targets(self):
         return self.manifest['targets']

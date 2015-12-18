@@ -6,6 +6,17 @@ def run(*args):
     ret = subprocess.call(args,  stdout=sys.stdout, stderr=sys.stderr)
     if ret != 0:
         exit(ret)
+
+def run_filter(filter, *args):
+    replacement = 'X' * len(filter)
+    try:
+        output = subprocess.check_output(args,
+                                         stderr = subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        print(e.output.decode('utf-8').replace(filter, replacement))
+        exit(e.returncode)
+    print(output.decode('utf-8').replace(filter, replacement))
+
 def run_output(*args):
     try:
         output = subprocess.check_output(args,
@@ -118,7 +129,7 @@ def doc_upload(version, manifest, args):
 
         run('git', 'clone', 'https://github.com/davisp/ghp-import')
         run(sys.executable, './ghp-import/ghp-import', '-n', 'target/doc')
-        run('git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
+        run_filter(token, 'git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
 
 def build_kcov(use_sudo, verify):
     deps = ''

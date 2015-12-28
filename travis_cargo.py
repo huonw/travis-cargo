@@ -48,7 +48,7 @@ class Manifest(object):
                                                  stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError as e2:
                 print('Cargo failed to read `--manifest-path {}`'
-                      ' and `--manifest-path {}`:' % (path_file, path_dir),
+                      ' and `--manifest-path {}`:'.format(path_file, path_dir),
                       file = sys.sdterr)
                 print(e.output.decode('utf-8'))
                 print(e2.output.decode('utf-8'))

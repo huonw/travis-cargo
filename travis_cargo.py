@@ -128,7 +128,7 @@ def doc_upload(version, manifest, args):
             f.write('<meta http-equiv=refresh content=0;url=%s/index.html>' % lib_name)
 
         run('git', 'clone', 'https://github.com/davisp/ghp-import')
-        run(sys.executable, './ghp-import/ghp-import', '-n', 'target/doc')
+        run(sys.executable, './ghp-import/ghp_import.py', '-n', 'target/doc')
         run_filter(token, 'git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
 
 def build_kcov(use_sudo, verify):

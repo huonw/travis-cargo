@@ -168,11 +168,16 @@ optional arguments:
                         the directory to put the final merged kcov result into
                         (default `target/kcov`)
   --exclude-pattern PATTERN
-                        pass additional exclusionary patterns to kcov
+                        pass additional comma-separated exclusionary patterns
+                        to kcov. See <https://github.com/SimonKagstrom/kcov
+                        #filtering-output> for how patterns work. By default,
+                        the /.cargo pattern is ignored. Example: --exclude-
+                        pattern="test/,bench/"
   --kcov-options OPTION
                         pass additional arguments to kcov, apart from --verify
                         and --exclude-pattern, when recording coverage.
-                        Specify multiple times for multiple arguments
+                        Specify multiple times for multiple arguments.
+                        Example: --kcov-options="--debug=31"
   --no-sudo             don't use `sudo` to install kcov's deps. Requires that
                         libcurl4-openssl-dev, libelf-dev and libdw-dev are
                         installed (e.g. via `addons: apt: packages:`)
@@ -198,11 +203,16 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --exclude-pattern PATTERN
-                        pass additional exclusionary patterns to kcov
+                        pass additional comma-separated exclusionary patterns
+                        to kcov. See <https://github.com/SimonKagstrom/kcov
+                        #filtering-output> for how patterns work. By default,
+                        the /.cargo pattern is ignored. Example: --exclude-
+                        pattern="test/,bench/"
   --kcov-options OPTION
                         pass additional arguments to kcov, apart from --verify
                         and --exclude-pattern, when recording coverage.
-                        Specify multiple times for multiple arguments
+                        Specify multiple times for multiple arguments.
+                        Example: --kcov-options="--debug=31"
   --no-sudo             don't use `sudo` to install kcov's deps. Requires that
                         libcurl4-openssl-dev, libelf-dev and libdw-dev are
                         installed (e.g. via `addons: apt: packages:`)

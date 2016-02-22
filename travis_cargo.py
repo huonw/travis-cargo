@@ -229,7 +229,10 @@ class ScInfo(object):
 
 EXCLUDE_PATTERN = (['--exclude-pattern'], {
     'metavar': 'PATTERN',
-    'help': 'pass additional exclusionary patterns to kcov'
+    'help': 'pass additional comma-separated exclusionary patterns to kcov. '
+    'See <https://github.com/SimonKagstrom/kcov#filtering-output> for how '
+    'patterns work. By default, the /.cargo pattern is ignored. Example: '
+    '--exclude-pattern="test/,bench/"'
 })
 
 KCOV_OPTIONS = (['--kcov-options'], {
@@ -238,7 +241,7 @@ KCOV_OPTIONS = (['--kcov-options'], {
     'default': [],
     'help': 'pass additional arguments to kcov, apart from --verify '
     'and --exclude-pattern, when recording coverage. Specify multiple '
-    'times for multiple arguments'
+    'times for multiple arguments. Example: --kcov-options="--debug=31"'
 })
 
 NO_SUDO = (['--no-sudo'], {

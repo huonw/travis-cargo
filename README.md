@@ -151,7 +151,9 @@ subcommands:
 ### `coverage`
 
 ```
-usage: travis-cargo coverage [-h] [-m DIR] [ARGS [ARGS ...]]
+usage: travis-cargo coverage [-h] [-m DIR] [--exclude-pattern PATTERN]
+                             [--kcov-options OPTION] [--no-sudo] [--verify]
+                             [ARGS [ARGS ...]]
 
 Record coverage of `cargo test`, this runs all binaries that `cargo test` runs
 but not doc tests. The results of all tests are merged into a single
@@ -165,6 +167,17 @@ optional arguments:
   -m DIR, --merge-into DIR
                         the directory to put the final merged kcov result into
                         (default `target/kcov`)
+  --exclude-pattern PATTERN
+                        pass additional comma-separated exclusionary patterns
+                        to kcov. See <https://github.com/SimonKagstrom/kcov
+                        #filtering-output> for how patterns work. By default,
+                        the /.cargo pattern is ignored. Example: --exclude-
+                        pattern="test/,bench/"
+  --kcov-options OPTION
+                        pass additional arguments to kcov, apart from --verify
+                        and --exclude-pattern, when recording coverage.
+                        Specify multiple times for multiple arguments.
+                        Example: --kcov-options="--debug=31"
   --no-sudo             don't use `sudo` to install kcov's deps. Requires that
                         libcurl4-openssl-dev, libelf-dev and libdw-dev are
                         installed (e.g. via `addons: apt: packages:`)
@@ -176,23 +189,36 @@ optional arguments:
 ### `coveralls`
 
 ```
-usage: travis-cargo coveralls [-h] [ARGS [ARGS ...]]
+usage: travis-cargo coveralls [-h] [--exclude-pattern PATTERN]
+                              [--kcov-options OPTION] [--no-sudo] [--verify]
+                              [ARGS [ARGS ...]]
 
 Record coverage of `cargo test` and upload to coveralls.io with kcov, this
 runs all binaries that `cargo test` runs but not doc tests. Merged kcov
 results can be accessed in `target/kcov`.
 
 positional arguments:
-  ARGS        arguments to pass to `cargo test`
+  ARGS                  arguments to pass to `cargo test`
 
 optional arguments:
-  -h, --help  show this help message and exit
-  --no-sudo   don't use `sudo` to install kcov's deps. Requires that libcurl4
-              -openssl-dev, libelf-dev and libdw-dev are installed (e.g. via
-              `addons: apt: packages:`)
-  --verify    pass `--verify` to kcov, to avoid some crashes. See
-              <https://github.com/huonw/travis-cargo/issues/12>. This requires
-              installing the `binutils-dev` package.
+  -h, --help            show this help message and exit
+  --exclude-pattern PATTERN
+                        pass additional comma-separated exclusionary patterns
+                        to kcov. See <https://github.com/SimonKagstrom/kcov
+                        #filtering-output> for how patterns work. By default,
+                        the /.cargo pattern is ignored. Example: --exclude-
+                        pattern="test/,bench/"
+  --kcov-options OPTION
+                        pass additional arguments to kcov, apart from --verify
+                        and --exclude-pattern, when recording coverage.
+                        Specify multiple times for multiple arguments.
+                        Example: --kcov-options="--debug=31"
+  --no-sudo             don't use `sudo` to install kcov's deps. Requires that
+                        libcurl4-openssl-dev, libelf-dev and libdw-dev are
+                        installed (e.g. via `addons: apt: packages:`)
+  --verify              pass `--verify` to kcov, to avoid some crashes. See
+                        <https://github.com/huonw/travis-cargo/issues/12>.
+                        This requires installing the `binutils-dev` package.
 ```
 
 ### `doc-upload`

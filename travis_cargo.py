@@ -162,7 +162,8 @@ def build_kcov(use_sudo, verify):
     os.chdir(current)
     return os.path.join(current, 'kcov/build/src/kcov')
 
-def raw_coverage(use_sudo, verify, test_args, merge_msg, kcov_merge_args, kcov_merge_dir):
+def raw_coverage(use_sudo, verify, test_args, merge_msg, kcov_merge_args, kcov_merge_dir,
+                 exclude_pattern, extra_kcov_args):
     kcov = build_kcov(use_sudo, verify)
 
     test_binaries = []
@@ -181,11 +182,15 @@ def raw_coverage(use_sudo, verify, test_args, merge_msg, kcov_merge_args, kcov_m
     # record coverage for each binary
     for binary in test_binaries:
         print('Recording %s' % binary)
-        kcov_args = [kcov]
+        kcov_args = [kcov] + extra_kcov_args
         if verify:
             kcov_args += ['--verify']
-        kcov_args += ['--exclude-pattern=/.cargo', 'target/kcov-' + binary,
+        exclude_pattern_arg = '--exclude-pattern=/.cargo'
+        if exclude_pattern:
+            exclude_pattern_arg += ',{}'.format(exclude_pattern)
+        kcov_args += [exclude_pattern_arg, 'target/kcov-' + binary,
                       'target/debug/' + binary]
+        print('Running: {}'.format(' '.join(kcov_args)))
         run(*kcov_args)
     # merge all the coverages and upload in one go
     print(merge_msg)
@@ -198,7 +203,8 @@ def coverage(version, manifest, args):
     add_features(cargo_args, version)
 
     kcov_merge_dir = args.merge_into
-    raw_coverage(not args.no_sudo, args.verify, cargo_args, 'Merging coverage', [], kcov_merge_dir)
+    raw_coverage(not args.no_sudo, args.verify, cargo_args, 'Merging coverage', [], kcov_merge_dir,
+                 args.exclude_pattern, args.kcov_args)
 
 def coveralls(version, manifest, args):
     job_id = os.environ['TRAVIS_JOB_ID']
@@ -207,7 +213,7 @@ def coveralls(version, manifest, args):
     add_features(cargo_args, version)
 
     raw_coverage(not args.no_sudo, args.verify, cargo_args, 'Uploading coverage',
-                 ['--coveralls-id=' + job_id], 'target/kcov')
+                 ['--coveralls-id=' + job_id], 'target/kcov', args.exclude_pattern, args.kcov_args)
 
 
 # user interface
@@ -220,6 +226,23 @@ class ScInfo(object):
         self.is_cargo = is_cargo
         for _name, options in arguments:
             assert isinstance(options, dict)
+
+EXCLUDE_PATTERN = (['--exclude-pattern'], {
+    'metavar': 'PATTERN',
+    'help': 'pass additional comma-separated exclusionary patterns to kcov. '
+    'See <https://github.com/SimonKagstrom/kcov#filtering-output> for how '
+    'patterns work. By default, the /.cargo pattern is ignored. Example: '
+    '--exclude-pattern="test/,bench/"'
+})
+
+KCOV_OPTIONS = (['--kcov-options'], {
+    'action': 'append',
+    'metavar': 'OPTION',
+    'default': [],
+    'help': 'pass additional arguments to kcov, apart from --verify '
+    'and --exclude-pattern, when recording coverage. Specify multiple '
+    'times for multiple arguments. Example: --kcov-options="--debug=31"'
+})
 
 NO_SUDO = (['--no-sudo'], {
     'action': 'store_true',
@@ -255,6 +278,8 @@ SC_INFO = {
                             'nargs': '*',
                             'help': 'arguments to pass to `cargo test`'
                         }),
+                                     EXCLUDE_PATTERN,
+                                     KCOV_OPTIONS,
                                      NO_SUDO,
                                      VERIFY]),
     'coverage': ScInfo(func = coverage,
@@ -273,6 +298,8 @@ SC_INFO = {
                                         'help': 'the directory to put the final merged kcov '
                                         'result into (default `target/kcov`)'
                                     }),
+                                    EXCLUDE_PATTERN,
+                                    KCOV_OPTIONS,
                                     NO_SUDO,
                                     VERIFY])
 }

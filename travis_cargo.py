@@ -60,7 +60,7 @@ class Manifest(object):
         return self.manifest['targets']
     def lib_name(self):
         libtypes = ['lib', 'dylib', 'staticlib', 'rlib']
-        for target in man['targets']:
+        for target in self.targets():
             if any(ltype in target['kind'] for ltype in libtypes):
                 return target['name'].replace('-', '_')
         return None

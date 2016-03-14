@@ -59,8 +59,9 @@ class Manifest(object):
     def targets(self):
         return self.manifest['targets']
     def lib_name(self):
-        for target in self.targets():
-            if 'lib' in target['kind']:
+        libtypes = ['lib', 'dylib', 'staticlib', 'rlib']
+        for target in man['targets']:
+            if any(ltype in target['kind'] for ltype in libtypes):
                 return target['name'].replace('-', '_')
         return None
 

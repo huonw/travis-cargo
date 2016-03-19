@@ -162,7 +162,8 @@ def build_kcov(use_sudo, verify):
     os.chdir(current)
     return os.path.join(current, 'kcov/build/src/kcov')
 
-def raw_coverage(use_sudo, verify, test_args, merge_msg, kcov_merge_args, kcov_merge_dir,
+def raw_coverage(use_sudo, verify, link_dead_code, test_args,
+                 merge_msg, kcov_merge_args, kcov_merge_dir,
                  exclude_pattern, extra_kcov_args):
     kcov = build_kcov(use_sudo, verify)
 
@@ -172,6 +173,10 @@ def raw_coverage(use_sudo, verify, test_args, merge_msg, kcov_merge_args, kcov_m
     # FIXME: the information cargo feeds us is
     # inconsistent/inaccurate, so using the output of read-manifest is
     # far too much trouble.
+
+    if link_dead_code:
+        flags = ','.join((os.environ.get('RUSTFLAGS', ''), '-C link-dead-code'))
+        os.environ['RUSTFLAGS'] = flags
 
     output = run_output('cargo', 'test', *test_args)
     running = re.compile('^     Running target/debug/(.*)$', re.M)
@@ -203,7 +208,8 @@ def coverage(version, manifest, args):
     add_features(cargo_args, version)
 
     kcov_merge_dir = args.merge_into
-    raw_coverage(not args.no_sudo, args.verify, cargo_args, 'Merging coverage', [], kcov_merge_dir,
+    raw_coverage(not args.no_sudo, args.verify, not args.no_link_dead_code, cargo_args,
+                 'Merging coverage', [], kcov_merge_dir,
                  args.exclude_pattern, args.kcov_options)
 
 def coveralls(version, manifest, args):
@@ -212,8 +218,9 @@ def coveralls(version, manifest, args):
     cargo_args = args.cargo_args
     add_features(cargo_args, version)
 
-    raw_coverage(not args.no_sudo, args.verify, cargo_args, 'Uploading coverage',
-                 ['--coveralls-id=' + job_id], 'target/kcov', args.exclude_pattern, args.kcov_options)
+    raw_coverage(not args.no_sudo, args.verify, not args.no_link_dead_code, cargo_args,
+                 'Uploading coverage', ['--coveralls-id=' + job_id], 'target/kcov',
+                 args.exclude_pattern, args.kcov_options)
 
 
 # user interface
@@ -258,6 +265,14 @@ VERIFY = (['--verify'], {
     '<https://github.com/huonw/travis-cargo/issues/12>. This requires '
     'installing the `binutils-dev` package.'
 })
+NO_LINK_DEAD_CODE = (['--no-link-dead-code'], {
+    'action': 'store_true',
+    'default': False,
+    'help': 'By default, travis_cargo passes `-C link-dead-code` to rustc '
+    'during compilation. This can lead to more accurate code coverage if your '
+    'compiler supports it. This flags allows users to opt out of linking dead '
+    'code.'
+})
 
 SC_INFO = {
     'doc-upload': ScInfo(func = doc_upload,
@@ -281,7 +296,8 @@ SC_INFO = {
                                      EXCLUDE_PATTERN,
                                      KCOV_OPTIONS,
                                      NO_SUDO,
-                                     VERIFY]),
+                                     VERIFY,
+                                     NO_LINK_DEAD_CODE]),
     'coverage': ScInfo(func = coverage,
                        description = 'Record coverage of `cargo test`, this runs all '
                        'binaries that `cargo test` runs but not doc tests. The results '
@@ -301,7 +317,8 @@ SC_INFO = {
                                     EXCLUDE_PATTERN,
                                     KCOV_OPTIONS,
                                     NO_SUDO,
-                                    VERIFY])
+                                    VERIFY,
+                                    NO_LINK_DEAD_CODE])
 }
 
 def cargo_sc(name, features):

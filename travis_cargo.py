@@ -208,7 +208,7 @@ def coverage(version, manifest, args):
 
     kcov_merge_dir = args.merge_into
     raw_coverage(not args.no_sudo, args.verify, cargo_args, 'Merging coverage', [], kcov_merge_dir,
-                 args.exclude_pattern, args.kcov_args)
+                 args.exclude_pattern, args.kcov_options)
 
 def coveralls(version, manifest, args):
     job_id = os.environ['TRAVIS_JOB_ID']
@@ -217,7 +217,8 @@ def coveralls(version, manifest, args):
     add_features(cargo_args, version)
 
     raw_coverage(not args.no_sudo, args.verify, cargo_args, 'Uploading coverage',
-                 ['--coveralls-id=' + job_id], 'target/kcov', args.exclude_pattern, args.kcov_args)
+                 ['--coveralls-id=' + job_id], 'target/kcov',
+                 args.exclude_pattern, args.kcov_options)
 
 
 # user interface

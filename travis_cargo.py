@@ -122,13 +122,16 @@ def doc_upload(version, manifest, args):
         # other vars causes problems with tests)
         token = os.environ['GH_TOKEN']
 
+        commit = run_output('git', 'rev-parse', '--short', 'HEAD').strip()
+        msg = 'Documentation for %s@%s' % (repo, commit)
+
         print('uploading docs...')
         sys.stdout.flush()
         with open('target/doc/index.html', 'w') as f:
             f.write('<meta http-equiv=refresh content=0;url=%s/index.html>' % lib_name)
 
         run('git', 'clone', 'https://github.com/davisp/ghp-import')
-        run(sys.executable, './ghp-import/ghp_import.py', '-n', 'target/doc')
+        run(sys.executable, './ghp-import/ghp_import.py', '-n', '-m', msg, 'target/doc')
         run_filter(token, 'git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
 
 def build_kcov(use_sudo, verify):

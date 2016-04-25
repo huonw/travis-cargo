@@ -332,10 +332,12 @@ def cargo_sc(name, features):
 NO_FEATURE_CARGO = [
     'clean', 'fetch', 'generate-lockfile', 'git-checkout', 'help', 'locate-project',
     'login', 'new', 'owner', 'package', 'pkgid', 'publish', 'read-manifest', 'search',
-    'update', 'verify-project', 'version', 'yank'
+    'update', 'verify-project', 'version', 'yank',
+    # FIXME #41: manually allow some third party subcommands
+    'clippy', 'fmt',
 ]
 FEATURE_CARGO = [
-    'build', 'bench', 'test', 'doc', 'run', 'rustc', 'rustdoc',
+    'build', 'bench', 'test', 'doc', 'run', 'rustc', 'rustdoc', 'install',
 ]
 SC_INFO.update((c, cargo_sc(c, False)) for c in NO_FEATURE_CARGO)
 SC_INFO.update((c, cargo_sc(c, True)) for c in FEATURE_CARGO)

@@ -2,8 +2,13 @@ from __future__ import print_function
 import argparse
 import os, sys, subprocess, json, re
 
-def run(*args):
-    ret = subprocess.call(args,  stdout=sys.stdout, stderr=sys.stderr)
+def run(*args, **kwargs):
+    # use the current environment, but override the vars the caller
+    # specified
+    env = os.environ.copy()
+    env.update(kwargs.get('env', {}))
+
+    ret = subprocess.call(args,  stdout=sys.stdout, stderr=sys.stderr, env=env)
     if ret != 0:
         exit(ret)
 
@@ -182,6 +187,11 @@ def raw_coverage(use_sudo, verify, test_args, merge_msg, kcov_merge_args, kcov_m
     for line in running.finditer(output):
         test_binaries.append(line.group(1))
 
+    # issue #52: dylib dependencies don't get found properly when running kcov.
+    ld_library_path = os.environ.get('LD_LIBRARY_PATH', '')
+    if ld_library_path:
+        ld_library_path += ':'
+    ld_library_path += 'target/debug/deps'
 
     # record coverage for each binary
     for binary in test_binaries:
@@ -195,7 +205,7 @@ def raw_coverage(use_sudo, verify, test_args, merge_msg, kcov_merge_args, kcov_m
         kcov_args += [exclude_pattern_arg, 'target/kcov-' + binary,
                       'target/debug/' + binary]
         print('Running: {}'.format(' '.join(kcov_args)))
-        run(*kcov_args)
+        run(*kcov_args, env={'LD_LIBRARY_PATH': ld_library_path})
     # merge all the coverages and upload in one go
     print(merge_msg)
     kcov_args = [kcov, '--merge'] + kcov_merge_args + [kcov_merge_dir]

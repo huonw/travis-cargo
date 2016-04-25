@@ -7,3 +7,6 @@ authors = ["Huon Wilson <dbau.pp@gmail.com>"]
 remove-failing = []
 unstable = []
 custom-unstable = []
+
+[dependencies]
+dylib = { path = "dylib" }

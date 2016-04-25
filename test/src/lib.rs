@@ -2,11 +2,19 @@
 #[cfg(any(feature = "unstable", feature = "custom-unstable"))]
 extern crate test;
 
+extern crate dylib;
+
 pub fn function() {
+    // call something so the linker doesn't kill it
+    dylib::foo();
+
     println!("hi");
 }
 
 pub fn function2() {
+    // call something so the linker doesn't kill it
+    dylib::foo();
+
     println!("hi");
 }
 

@@ -12,20 +12,28 @@ def run(*args, **kwargs):
     if ret != 0:
         exit(ret)
 
-def run_filter(filter, *args):
+def run_filter(filter, *args, **kwargs):
+    env = os.environ.copy()
+    env.update(kwargs.get('env', {}))
+
     replacement = 'X' * len(filter)
     try:
         output = subprocess.check_output(args,
-                                         stderr = subprocess.STDOUT)
+                                         stderr = subprocess.STDOUT,
+                                         env = env)
     except subprocess.CalledProcessError as e:
         print(e.output.decode('utf-8').replace(filter, replacement))
         exit(e.returncode)
     print(output.decode('utf-8').replace(filter, replacement))
 
-def run_output(*args):
+def run_output(*args, **kwargs):
+    env = os.environ.copy()
+    env.update(kwargs.get('env', {}))
+
     try:
         output = subprocess.check_output(args,
-                                         stderr=sys.stderr)
+                                         stderr=sys.stderr,
+                                         env = env)
     except subprocess.CalledProcessError as e:
         print(e.output.decode('utf-8'))
         exit(e.returncode)
@@ -184,10 +192,11 @@ def raw_coverage(use_sudo, verify, link_dead_code, test_args,
     # far too much trouble.
 
     if link_dead_code:
-        flags = ','.join((os.environ.get('RUSTFLAGS', ''), '-C link-dead-code'))
-        os.environ['RUSTFLAGS'] = flags
+        env = {'RUSTFLAGS': ' '.join((os.environ.get('RUSTFLAGS', ''), '-C link-dead-code'))}
+    else:
+        env = {}
 
-    output = run_output('cargo', 'test', *test_args)
+    output = run_output('cargo', 'test', *test_args, env = env)
     running = re.compile('^     Running target/debug/(.*)$', re.M)
     for line in running.finditer(output):
         test_binaries.append(line.group(1))

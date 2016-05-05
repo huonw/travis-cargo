@@ -1,0 +1,8 @@
+[package]
+name = "dylib"
+version = "0.1.0"
+authors = ["Huon Wilson <dbau.pp+github@gmail.com>"]
+
+[lib]
+name = "dylib"
+crate_type = ["dylib"]

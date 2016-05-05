@@ -24,7 +24,7 @@ before_script:
       if [ "$PIP" = pip3 ]; then
         sudo apt-get update
         sudo apt-get install python3-setuptools
-        sudo easy_install3 pip
+        sudo easy_install3 'pip<8' # avoid problems with 3.2 compatibility
       fi
 script:
   - bash ./run-tests.sh

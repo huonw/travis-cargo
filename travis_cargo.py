@@ -2,8 +2,13 @@ from __future__ import print_function
 import argparse
 import os, sys, subprocess, json, re
 
-def run(*args):
-    ret = subprocess.call(args,  stdout=sys.stdout, stderr=sys.stderr)
+def run(*args, **kwargs):
+    # use the current environment, but override the vars the caller
+    # specified
+    env = os.environ.copy()
+    env.update(kwargs.get('env', {}))
+
+    ret = subprocess.call(args,  stdout=sys.stdout, stderr=sys.stderr, env=env)
     if ret != 0:
         exit(ret)
 
@@ -59,8 +64,9 @@ class Manifest(object):
     def targets(self):
         return self.manifest['targets']
     def lib_name(self):
+        libtypes = ['lib', 'dylib', 'staticlib', 'rlib']
         for target in self.targets():
-            if 'lib' in target['kind']:
+            if any(ltype in target['kind'] for ltype in libtypes):
                 return target['name'].replace('-', '_')
         return None
 
@@ -122,13 +128,16 @@ def doc_upload(version, manifest, args):
         # other vars causes problems with tests)
         token = os.environ['GH_TOKEN']
 
+        commit = run_output('git', 'rev-parse', '--short', 'HEAD').strip()
+        msg = 'Documentation for %s@%s' % (repo, commit)
+
         print('uploading docs...')
         sys.stdout.flush()
         with open('target/doc/index.html', 'w') as f:
             f.write('<meta http-equiv=refresh content=0;url=%s/index.html>' % lib_name)
 
         run('git', 'clone', 'https://github.com/davisp/ghp-import')
-        run(sys.executable, './ghp-import/ghp_import.py', '-n', 'target/doc')
+        run(sys.executable, './ghp-import/ghp_import.py', '-n', '-m', msg, 'target/doc')
         run_filter(token, 'git', 'push', '-fq', 'https://%s@github.com/%s.git' % (token, repo), 'gh-pages')
 
 def build_kcov(use_sudo, verify):
@@ -183,6 +192,11 @@ def raw_coverage(use_sudo, verify, link_dead_code, test_args,
     for line in running.finditer(output):
         test_binaries.append(line.group(1))
 
+    # issue #52: dylib dependencies don't get found properly when running kcov.
+    ld_library_path = os.environ.get('LD_LIBRARY_PATH', '')
+    if ld_library_path:
+        ld_library_path += ':'
+    ld_library_path += 'target/debug/deps'
 
     # record coverage for each binary
     for binary in test_binaries:
@@ -196,7 +210,7 @@ def raw_coverage(use_sudo, verify, link_dead_code, test_args,
         kcov_args += [exclude_pattern_arg, 'target/kcov-' + binary,
                       'target/debug/' + binary]
         print('Running: {}'.format(' '.join(kcov_args)))
-        run(*kcov_args)
+        run(*kcov_args, env={'LD_LIBRARY_PATH': ld_library_path})
     # merge all the coverages and upload in one go
     print(merge_msg)
     kcov_args = [kcov, '--merge'] + kcov_merge_args + [kcov_merge_dir]
@@ -334,10 +348,12 @@ def cargo_sc(name, features):
 NO_FEATURE_CARGO = [
     'clean', 'fetch', 'generate-lockfile', 'git-checkout', 'help', 'locate-project',
     'login', 'new', 'owner', 'package', 'pkgid', 'publish', 'read-manifest', 'search',
-    'update', 'verify-project', 'version', 'yank'
+    'update', 'verify-project', 'version', 'yank',
+    # FIXME #41: manually allow some third party subcommands
+    'clippy', 'fmt',
 ]
 FEATURE_CARGO = [
-    'build', 'bench', 'test', 'doc', 'run', 'rustc', 'rustdoc',
+    'build', 'bench', 'test', 'doc', 'run', 'rustc', 'rustdoc', 'install',
 ]
 SC_INFO.update((c, cargo_sc(c, False)) for c in NO_FEATURE_CARGO)
 SC_INFO.update((c, cargo_sc(c, True)) for c in FEATURE_CARGO)

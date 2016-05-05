@@ -193,10 +193,14 @@ def raw_coverage(use_sudo, verify, link_dead_code, test_args,
 
     if link_dead_code:
         env = {'RUSTFLAGS': ' '.join((os.environ.get('RUSTFLAGS', ''), '-C link-dead-code'))}
+        # we'll need to recompile everything with the new flag, so
+        # lets start from the start.
+        run('cargo', 'clean', '-v')
     else:
         env = {}
 
     output = run_output('cargo', 'test', *test_args, env = env)
+    print(output)
     running = re.compile('^     Running target/debug/(.*)$', re.M)
     for line in running.finditer(output):
         test_binaries.append(line.group(1))

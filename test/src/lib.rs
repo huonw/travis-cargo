@@ -18,6 +18,13 @@ pub fn function2() {
     println!("hi");
 }
 
+pub fn function3() {
+    dylib::foo();
+    dylib::bar();
+
+    println!("hi");
+}
+
 
 #[test]
 fn incrate() {
